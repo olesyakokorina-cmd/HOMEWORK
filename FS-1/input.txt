@@ -1,0 +1,4 @@
+Hello world!
+This is a test file.
+My C++ program should read this.
+Line by line.
