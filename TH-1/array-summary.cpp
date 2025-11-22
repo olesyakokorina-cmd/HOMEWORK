@@ -1,70 +1,94 @@
 #include <iostream>
-#include <vector>
-#include <thread>
+#include <pthread.h>
 #include <cstdlib>
 #include <ctime>
 
-void sum_part(const std::vector<int>& arr, size_t start, size_t end, long& result) {
-    for (size_t i = start; i < end; ++i) {
-        result += arr[i];
-    }
+struct ThreadData {
+    int* arr;
+    int start;
+    int end;
+    long long result;
+};
+
+void* thread_sum(void* arg)
+{
+    ThreadData* data = (ThreadData*)arg;
+    long long sum = 0;
+
+    for (int i = data->start; i < data->end; i++)
+        sum += data->arr[i];
+
+    data->result = sum;
+    return NULL;
 }
 
-int main(int argc, char* argv[]) {
-    if (argc != 3) {
-        std::cerr << "Usage: ./array-summary <N> <M>" << std::endl;
+int main(int argc, char* argv[])
+{
+    if (argc < 3) {
+        std::cout << "Usage: " << argv[0] << " <N> <M>\n";
         return 1;
     }
 
-    size_t N = atoi(argv[1]); 
-    int M = atoi(argv[2]);    
+    int N = atoi(argv[1]);
+    int M = atoi(argv[2]);
 
-    if (N == 0 || M <= 0) {
-        std::cerr << "N must be greater than 0 and M must be positive!" << std::endl;
+    if (N <= 1000000) {
+        std::cout << "N must be > 1,000,000\n";
+        return 1;
+    }
+    if (M <= 0) {
+        std::cout << "M must be >= 1\n";
         return 1;
     }
 
-    std::vector<int> arr(N);
-    for (size_t i = 0; i < N; ++i) {
-        arr[i] = rand() % 100; 
+    int* arr = new int[N];
+
+    srand(time(NULL));
+    for (int i = 0; i < N; i++)
+        arr[i] = rand() % 100 + 1;
+
+    clock_t t1 = clock();
+
+    long long sum_single = 0;
+    for (int i = 0; i < N; i++)
+        sum_single += arr[i];
+
+    clock_t t2 = clock();
+    double time_single = double(t2 - t1) / CLOCKS_PER_SEC;
+
+    pthread_t* threads = new pthread_t[M];
+    ThreadData* tdata = new ThreadData[M];
+
+    int chunk = N / M;
+    int remainder = N % M;
+
+    clock_t t3 = clock();
+
+    for (int i = 0; i < M; i++) {
+        tdata[i].arr = arr;
+        tdata[i].start = i * chunk;
+        tdata[i].end = (i == M - 1) ? (i + 1) * chunk + remainder
+                                    : (i + 1) * chunk;
+        pthread_create(&threads[i], NULL, thread_sum, &tdata[i]);
     }
 
-    clock_t start_time = clock();
-    long sum_no_threads = 0;
-    for (size_t i = 0; i < N; ++i) {
-        sum_no_threads += arr[i];
-    }
-    clock_t end_time = clock();
-    double duration_no_threads = double(end_time - start_time) / CLOCKS_PER_SEC;
+    for (int i = 0; i < M; i++)
+        pthread_join(threads[i], NULL);
 
-    std::vector<std::thread> threads;
-    std::vector<long> partial_sums(M, 0); 
+    long long sum_multi = 0;
+    for (int i = 0; i < M; i++)
+        sum_multi += tdata[i].result;
 
-    start_time = clock();
+    clock_t t4 = clock();
+    double time_multi = double(t4 - t3) / CLOCKS_PER_SEC;
 
-    size_t chunk_size = N / M;
-    for (int i = 0; i < M; ++i) {
-        size_t start = i * chunk_size;
-        size_t end = (i == M - 1) ? N : start + chunk_size;
-        threads.push_back(std::thread(sum_part, std::cref(arr), start, end, std::ref(partial_sums[i])));
-    }
+    std::cout << "Time spent without threads: " << time_single << " seconds\n";
+    std::cout << "Time spent with " << M << " threads: " << time_multi << " seconds\n";
 
-    for (auto& t : threads) {
-        t.join();
-    }
-
-    long sum_with_threads = 0;
-    for (long partial_sum : partial_sums) {
-        sum_with_threads += partial_sum;
-    }
-
-    end_time = clock();
-    double duration_with_threads = double(end_time - start_time) / CLOCKS_PER_SEC;
-
-    std::cout << "Time spent without threads: " << duration_no_threads << " seconds" << std::endl;
-    std::cout << "Time spent with M threads: " << duration_with_threads << " seconds" << std::endl;
+    delete[] threads;
+    delete[] tdata;
+    delete[] arr;
 
     return 0;
 }
-
 

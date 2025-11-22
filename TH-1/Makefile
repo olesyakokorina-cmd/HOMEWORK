@@ -1,12 +1,13 @@
-CC = g++
-CFLAGS = -std=c++11 -O2 -pthread
+CXX = g++
+CXXFLAGS = -O2 -Wall
+LDFLAGS = -lpthread
 TARGET = array-summary
 SRC = array-summary.cpp
 
 all: $(TARGET)
 
 $(TARGET): $(SRC)
-	$(CC) $(CFLAGS) -o $(TARGET) $(SRC)
+	$(CXX) $(CXXFLAGS) -o $(TARGET) $(SRC) $(LDFLAGS)
 
 clean:
 	rm -f $(TARGET)
