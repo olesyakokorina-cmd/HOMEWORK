@@ -1,14 +1,11 @@
 CXX = g++
-CXXFLAGS = -O2 -Wall
-LDFLAGS = -lpthread
-TARGET = array-summary
-SRC = array-summary.cpp
+CXXFLAGS = -O2 -pthread -Wall
 
-all: $(TARGET)
+all: array-summary
 
-$(TARGET): $(SRC)
-	$(CXX) $(CXXFLAGS) -o $(TARGET) $(SRC) $(LDFLAGS)
+array-summary: array-summary.cpp
+	$(CXX) $(CXXFLAGS) array-summary.cpp -o array-summary
 
 clean:
-	rm -f $(TARGET)
+	rm -f array-summary
 

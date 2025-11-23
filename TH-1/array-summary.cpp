@@ -32,7 +32,7 @@ int main(int argc, char* argv[])
     int N = atoi(argv[1]);
     int M = atoi(argv[2]);
 
-    if (N <= 1000000) {
+    if (N < 1000000) {
         std::cout << "N must be > 1,000,000\n";
         return 1;
     }
@@ -47,6 +47,7 @@ int main(int argc, char* argv[])
     for (int i = 0; i < N; i++)
         arr[i] = rand() % 100 + 1;
 
+    // ----- Single-thread -----
     clock_t t1 = clock();
 
     long long sum_single = 0;
@@ -56,6 +57,7 @@ int main(int argc, char* argv[])
     clock_t t2 = clock();
     double time_single = double(t2 - t1) / CLOCKS_PER_SEC;
 
+    // ----- Multi-thread -----
     pthread_t* threads = new pthread_t[M];
     ThreadData* tdata = new ThreadData[M];
 
@@ -69,11 +71,21 @@ int main(int argc, char* argv[])
         tdata[i].start = i * chunk;
         tdata[i].end = (i == M - 1) ? (i + 1) * chunk + remainder
                                     : (i + 1) * chunk;
-        pthread_create(&threads[i], NULL, thread_sum, &tdata[i]);
+
+        int rc = pthread_create(&threads[i], NULL, thread_sum, &tdata[i]);
+        if (rc != 0) {
+            std::cerr << "pthread_create failed, code = " << rc << "\n";
+            exit(EXIT_FAILURE);
+        }
     }
 
-    for (int i = 0; i < M; i++)
-        pthread_join(threads[i], NULL);
+    for (int i = 0; i < M; i++) {
+        int rc = pthread_join(threads[i], NULL);
+        if (rc != 0) {
+            std::cerr << "pthread_join failed, code = " << rc << "\n";
+            exit(EXIT_FAILURE);
+        }
+    }
 
     long long sum_multi = 0;
     for (int i = 0; i < M; i++)
@@ -82,8 +94,8 @@ int main(int argc, char* argv[])
     clock_t t4 = clock();
     double time_multi = double(t4 - t3) / CLOCKS_PER_SEC;
 
-    std::cout << "Time spent without threads: " << time_single << " seconds\n";
-    std::cout << "Time spent with " << M << " threads: " << time_multi << " seconds\n";
+    std::cout << "Time spent without threads: " << time_single << "\n";
+    std::cout << "Time spent with " << M << " threads: " << time_multi << "\n";
 
     delete[] threads;
     delete[] tdata;
@@ -91,4 +103,5 @@ int main(int argc, char* argv[])
 
     return 0;
 }
+
 
